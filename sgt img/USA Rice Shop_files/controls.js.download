@@ -1,0 +1,1001 @@
+﻿var radWindowNumber = 1;
+
+// Base64 object usefull for encoding / decoding
+var Base64 = { _keyStr: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", encode: function (e) { var t = ""; var n, r, i, s, o, u, a; var f = 0; e = Base64._utf8_encode(e); while (f < e.length) { n = e.charCodeAt(f++); r = e.charCodeAt(f++); i = e.charCodeAt(f++); s = n >> 2; o = (n & 3) << 4 | r >> 4; u = (r & 15) << 2 | i >> 6; a = i & 63; if (isNaN(r)) { u = a = 64 } else if (isNaN(i)) { a = 64 } t = t + this._keyStr.charAt(s) + this._keyStr.charAt(o) + this._keyStr.charAt(u) + this._keyStr.charAt(a) } return t }, decode: function (e) { var t = ""; var n, r, i; var s, o, u, a; var f = 0; e = e.replace(/[^A-Za-z0-9+/=]/g, ""); while (f < e.length) { s = this._keyStr.indexOf(e.charAt(f++)); o = this._keyStr.indexOf(e.charAt(f++)); u = this._keyStr.indexOf(e.charAt(f++)); a = this._keyStr.indexOf(e.charAt(f++)); n = s << 2 | o >> 4; r = (o & 15) << 4 | u >> 2; i = (u & 3) << 6 | a; t = t + String.fromCharCode(n); if (u != 64) { t = t + String.fromCharCode(r) } if (a != 64) { t = t + String.fromCharCode(i) } } t = Base64._utf8_decode(t); return t }, _utf8_encode: function (e) { e = e.replace(/rn/g, "n"); var t = ""; for (var n = 0; n < e.length; n++) { var r = e.charCodeAt(n); if (r < 128) { t += String.fromCharCode(r) } else if (r > 127 && r < 2048) { t += String.fromCharCode(r >> 6 | 192); t += String.fromCharCode(r & 63 | 128) } else { t += String.fromCharCode(r >> 12 | 224); t += String.fromCharCode(r >> 6 & 63 | 128); t += String.fromCharCode(r & 63 | 128) } } return t }, _utf8_decode: function (e) { var t = ""; var n = 0; var r = c1 = c2 = 0; while (n < e.length) { r = e.charCodeAt(n); if (r < 128) { t += String.fromCharCode(r); n++ } else if (r > 191 && r < 224) { c2 = e.charCodeAt(n + 1); t += String.fromCharCode((r & 31) << 6 | c2 & 63); n += 2 } else { c2 = e.charCodeAt(n + 1); c3 = e.charCodeAt(n + 2); t += String.fromCharCode((r & 15) << 12 | (c2 & 63) << 6 | c3 & 63); n += 3 } } return t } }
+
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (elt /*, from*/) {
+        var len = this.length >>> 0;
+
+        var from = Number(arguments[1]) || 0;
+        from = (from < 0) ? Math.ceil(from) : Math.floor(from);
+        if (from < 0)
+            from += len;
+
+        for (; from < len; from++) {
+            if (from in this && this[from] === elt)
+                return from;
+        }
+        return -1;
+    };
+}
+
+String.prototype.format = function () {
+    var content = this;
+    for (var i = 0; i < arguments.length; i++) {
+        var replacement = '{' + i + '}';
+        content = content.replace(replacement, arguments[i]);
+    }
+    return content;
+};
+
+var dateFormat = function () {
+    var token = /d{1,4}|m{1,4}|yy(?:yy)?|([HhMsTt])\1?|[LloSZ]|"[^"]*"|'[^']*'/g,
+		timezone = /\b(?:[PMCEA][SDP]T|(?:Pacific|Mountain|Central|Eastern|Atlantic) (?:Standard|Daylight|Prevailing) Time|(?:GMT|UTC)(?:[-+]\d{4})?)\b/g,
+		timezoneClip = /[^-+\dA-Z]/g,
+		pad = function (val, len) {
+		    val = String(val);
+		    len = len || 2;
+		    while (val.length < len) val = "0" + val;
+		    return val;
+		};
+
+    // Regexes and supporting functions are cached through closure
+    return function (date, mask, utc) {
+        var dF = dateFormat;
+
+        // You can't provide utc if you skip other args (use the "UTC:" mask prefix)
+        if (arguments.length == 1 && Object.prototype.toString.call(date) == "[object String]" && !/\d/.test(date)) {
+            mask = date;
+            date = undefined;
+        }
+
+        // Passing date through Date applies Date.parse, if necessary
+        date = date ? new Date(date) : new Date;
+        if (isNaN(date)) throw SyntaxError("invalid date");
+
+        mask = String(dF.masks[mask] || mask || dF.masks["default"]);
+
+        // Allow setting the utc argument via the mask
+        if (mask.slice(0, 4) == "UTC:") {
+            mask = mask.slice(4);
+            utc = true;
+        }
+
+        var _ = utc ? "getUTC" : "get",
+			d = date[_ + "Date"](),
+			D = date[_ + "Day"](),
+			m = date[_ + "Month"](),
+			y = date[_ + "FullYear"](),
+			H = date[_ + "Hours"](),
+			M = date[_ + "Minutes"](),
+			s = date[_ + "Seconds"](),
+			L = date[_ + "Milliseconds"](),
+			o = utc ? 0 : date.getTimezoneOffset(),
+			flags = {
+			    d: d,
+			    dd: pad(d),
+			    ddd: dF.i18n.dayNames[D],
+			    dddd: dF.i18n.dayNames[D + 7],
+			    m: m + 1,
+			    mm: pad(m + 1),
+			    mmm: dF.i18n.monthNames[m],
+			    mmmm: dF.i18n.monthNames[m + 12],
+			    yy: String(y).slice(2),
+			    yyyy: y,
+			    h: H % 12 || 12,
+			    hh: pad(H % 12 || 12),
+			    H: H,
+			    HH: pad(H),
+			    M: M,
+			    MM: pad(M),
+			    s: s,
+			    ss: pad(s),
+			    l: pad(L, 3),
+			    L: pad(L > 99 ? Math.round(L / 10) : L),
+			    t: H < 12 ? "a" : "p",
+			    tt: H < 12 ? "am" : "pm",
+			    T: H < 12 ? "A" : "P",
+			    TT: H < 12 ? "AM" : "PM",
+			    Z: utc ? "UTC" : (String(date).match(timezone) || [""]).pop().replace(timezoneClip, ""),
+			    o: (o > 0 ? "-" : "+") + pad(Math.floor(Math.abs(o) / 60) * 100 + Math.abs(o) % 60, 4),
+			    S: ["th", "st", "nd", "rd"][d % 10 > 3 ? 0 : (d % 100 - d % 10 != 10) * d % 10]
+			};
+
+        return mask.replace(token, function ($0) {
+            return $0 in flags ? flags[$0] : $0.slice(1, $0.length - 1);
+        });
+    };
+}();
+
+// Some common format strings
+dateFormat.masks = {
+    "default": "ddd mmm dd yyyy HH:MM:ss",
+    shortDate: "m/d/yy",
+    mediumDate: "mmm d, yyyy",
+    longDate: "mmmm d, yyyy",
+    fullDate: "dddd, mmmm d, yyyy",
+    shortTime: "h:MM TT",
+    mediumTime: "h:MM:ss TT",
+    longTime: "h:MM:ss TT Z",
+    isoDate: "yyyy-mm-dd",
+    isoTime: "HH:MM:ss",
+    isoDateTime: "yyyy-mm-dd'T'HH:MM:ss",
+    isoUtcDateTime: "UTC:yyyy-mm-dd'T'HH:MM:ss'Z'"
+};
+
+// Internationalization strings
+dateFormat.i18n = {
+    dayNames: [
+		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
+		"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+    ],
+    monthNames: [
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+		"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
+    ]
+};
+
+// For convenience...
+Date.prototype.format = function (mask, utc) {
+    return dateFormat(this, mask, utc);
+};
+
+function GetQueryString(key, default_) {
+    if (default_ == null) default_ = "";
+    key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regex = new RegExp("[\\?&]" + key + "=([^&#]*)");
+    var qs = regex.exec(mxRawURL);
+    if (qs == null)
+        return default_;
+    else
+        return qs[1];
+}
+
+function ReplaceUrlParam(url, name, value) {
+    name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regexS = "[\\?&]" + name + "=([^&#]*)";
+    var regex = new RegExp(regexS);
+    var results = regex.exec(url);
+    if (results == null)
+        return url;
+    else {
+        return url.replace(results[0], results[0].replace(/=(.*)/, '=' + value));
+    }
+}
+
+function RemoveUrlParam(key, sourceURL) {
+    var rtn = sourceURL.split("?")[0],
+        param,
+        params_arr = [],
+        queryString = (sourceURL.indexOf("?") !== -1) ? sourceURL.split("?")[1] : "";
+    if (queryString !== "") {
+        params_arr = queryString.split("&");
+        for (var i = params_arr.length - 1; i >= 0; i -= 1) {
+            param = params_arr[i].split("=")[0];
+            if (param === key) {
+                params_arr.splice(i, 1);
+            }
+        }
+        rtn = rtn + "?" + params_arr.join("&");
+    }
+    return rtn;
+}
+
+function GetRadWindowName() {
+    radWindowNumber++;
+
+    return "RadWindow" + radWindowNumber;
+}
+
+function OpenEditWindow(managerId, pagesPath, windowTitle, editControlVirtualPath, containerPageTypeName, parentModuleName, parentControlTypeName, settingsControlId, editMode, itemId, customerType, view, publicAccess, doPostBack, additionalAssemblyPath, additionalParams) {
+    if (typeof doPostBack === "undefined") doPostBack = false;
+    if (typeof additionalAssemblyPath == "undefined") additionalAssemblyPath = "";
+    if (typeof additionalParams == "undefined") additionalParams = "";
+
+    // Add the Parent Window's URL Parameters to the Edit URL so they become accessible from the Pop-up ONLY if the parent is not
+    // already an IFRAME
+    var parentWindowUrlParams = "";
+    if (self == top) {
+        parentWindowUrlParams = mxRawURLQueryString;
+        if (parentWindowUrlParams.length > 0) {
+            parentWindowUrlParams = RemoveUrlParam("CustomerType", parentWindowUrlParams);
+            parentWindowUrlParams = RemoveUrlParam("TabId", parentWindowUrlParams);     /* To avoid problems with DNN */
+            parentWindowUrlParams = parentWindowUrlParams.replace("?", "&");
+        }
+    }
+
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/Edit.aspx?WindowTitle=" + windowTitle + "&EditControlVirtualPath=" + editControlVirtualPath + "&ContainerPageTypeName=" + containerPageTypeName + "&ParentModuleName=" + parentModuleName + "&ParentControlTypeName=" + parentControlTypeName + "&SettingsControlId=" + settingsControlId + "&EditMode=" + editMode + "&ItemId=" + itemId + "&CustomerType=" + customerType + "&View=" + view + "&PublicAccess=" + publicAccess + "&DoPostback=" + doPostBack + "&AdditionalAssemblyPath=" + additionalAssemblyPath + "&AdditionalParams=" + additionalParams + parentWindowUrlParams, GetRadWindowName());
+}
+
+function GetRadWindow() {
+    var oWindow = null;
+    if (window.radWindow) oWindow = window.radWindow;
+    else if (window.frameElement.radWindow) oWindow = window.frameElement.radWindow;
+    return oWindow;
+}
+
+function CloseRadWindow() {
+    var oWindow = GetRadWindow();
+    oWindow.argument = null;
+    oWindow.close();
+}
+
+function EditWindowClosing(wnd, args) {
+    if (args.get_argument() != null) {
+        if (args.get_argument().action == 'save') {
+            // Check if we should close the parent (only if it's a pop-up)
+            if (args.get_argument().closeParent != null && args.get_argument().closeParent.length > 0 && args.get_argument().closeParent == 'Yes') {
+                ShowLoadingMessage();
+                CloseWindow(args.get_argument().action, args.get_argument().view);
+            }
+            else {
+                if (args.get_argument().doPostback != null && args.get_argument().doPostback == true) {
+                    // Make a postback and send "Refresh" to tell components to repopulate themselves
+                    ShowLoadingMessage();
+                    __doPostBack('Refresh', args.get_argument().postbackArgument);
+                } else {
+                    // Check if the Edit Page is returning a View we should return to
+                    if (args.get_argument().view != null && args.get_argument().view.length > 0) {
+                        // Check if the View parameter was already part of the URL
+                        if (GetQueryString('View', null).length > 0) {
+                            // If so, replace it with the new value
+                            ShowLoadingMessage();
+                            window.location.href = ReplaceUrlParam(mxRawURL, 'View', args.get_argument().view);
+                        } else {
+                            // If not, add it to the URL
+                            if (mxRawURL.indexOf('?') != -1) {
+                                // Not the first parameter
+                                ShowLoadingMessage();
+                                window.location.href = mxRawURL + "&View=" + args.get_argument().view;
+                            }
+                            else {
+                                // The first parameter
+                                ShowLoadingMessage();
+                                window.location.href = mxRawURL + "?View=" + args.get_argument().view;
+                            }
+                        }
+                    } else {
+                        // Renavigate to same page
+                        ShowLoadingMessage();
+                        window.location.href = window.location.href;
+                    }
+                }
+            }
+        }
+    }
+}
+
+function OpenConfigurationWindow(pagesPath, title, displayTitleEnabled, showDisplayTitle, pageTypeName, controlVirtualPath, controlId, editModeEnabled, securityByModeEnabled, allowAnonymousSecurity, basicViewChildControlsVirtualPaths, advancedViewControlVirtualPath, basicEditChildControlsVirtualPaths, advancedEditControlVirtualPath, module, component) {
+    var url = pagesPath + "/Configuration.aspx?DisplayTitleEnabled=" + displayTitleEnabled + "&ShowDisplayTitle=" + showDisplayTitle + "&PageTypeName=" + pageTypeName + "&ControlVirtualPath=" + controlVirtualPath + "&ControlId=" + controlId + "&EditModeEnabled=" + editModeEnabled + "&SecurityByModeEnabled=" + securityByModeEnabled + "&AllowAnonymousSecurity=" + allowAnonymousSecurity + "&BasicViewChildControlsVirtualPaths=" + basicViewChildControlsVirtualPaths + "&AdvancedViewControlVirtualPath=" + advancedViewControlVirtualPath + "&BasicEditChildControlsVirtualPaths=" + basicEditChildControlsVirtualPaths + "&AdvancedEditControlVirtualPath=" + advancedEditControlVirtualPath + "&Module=" + module + "&Component=" + component;
+
+    $('#mxConfigurationModal #save').addClass('disabled');
+    $('#mxConfigurationModal #title').text(title);
+    $('#mxConfigurationModal iframe').attr('src', url);
+    $('#mxConfigurationModal').draggable();
+    $('#mxConfigurationModal').modal();
+}
+
+function ConfigurationWindowClosing() {
+    if ($('#mxConfigurationModal #configToolbarAction').val() == 'save') {
+        ShowLoadingMessage();
+        window.location.href = window.location.href;
+    }
+
+    $('#mxConfigurationModal #configToolbarAction').val('');
+}
+
+function OpenAdminWindow(pagesPath, title, isUserAdmin) {
+    var url = pagesPath + "/Admin.aspx?isUserAdmin=" + isUserAdmin;
+
+    $('#mxAdminModal #save').addClass('disabled');
+    $('#mxAdminModal #title').text(title);
+    $('#mxAdminModal iframe').attr('src', url);
+    $('#mxAdminModal').draggable();
+    $('#mxAdminModal').modal();
+}
+
+function AdminWindowClosing() {
+    if ($('#mxAdminModal #adminToolbarAction').val() == 'save') {
+        ShowLoadingMessage();
+        window.location.href = window.location.href;
+    }
+
+    $('#mxAdminModal #adminToolbarAction').val('');
+}
+
+function OpenErrorReportWindow(managerId, pagesPath, correlationId) {
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/ErrorReport.aspx?correlationId=" + correlationId);
+}
+
+function GetWindow() {
+    var wnd = null;
+    if (window.radWindow) wnd = window.radWindow;
+    else if (window.frameElement.radWindow) wnd = window.frameElement.radWindow;
+    return wnd;
+}
+
+function MailTo(email, subject) {
+    location.href = "mailto:" + email + "?subject=" + subject;
+}
+
+function ShowConfirmDialog(managerId, callBackFunctionName, dialogText, dialogTitle) {
+    var callBackFunction = window[callBackFunctionName];
+    var manager = $find(managerId);
+    var oWnd = manager.radconfirm(dialogText, callBackFunction, 350, null, null, dialogTitle);
+    var popupElement = oWnd.get_popupElement();
+    popupElement.className = popupElement.className + " mx-windowmanager mx-dialog-popup";
+}
+
+function ShowAlertDialog(managerId, callBackFunctionName, dialogText, dialogTitle) {
+    var callBackFunction = window[callBackFunctionName];
+    var manager = $find(managerId);
+    var oWnd = manager.radalert(dialogText, 350, null, dialogTitle, callBackFunction);
+    var popupElement = oWnd.get_popupElement();
+    popupElement.className = popupElement.className + " mx-windowmanager mx-dialog-popup";
+}
+
+/*
+This function is useful to make radio buttons work inside repeaters
+See http://www.codeguru.com/csharp/csharp/cs_controls/custom/article.php/c12371/ASPNET-Tip-Using-RadioButton-Controls-in-a-Repeater.htm
+*/
+function SetUniqueRadioButton(nameregex, current) {
+    re = new RegExp(nameregex);
+
+    for (i = 0; i < document.forms[0].elements.length; i++) {
+        elm = document.forms[0].elements[i]
+        if (elm.type == 'radio') {
+            if (re.test(elm.name)) {
+                elm.checked = false;
+            }
+        }
+    }
+
+    current.checked = true;
+}
+
+/* Accounts */
+
+function OnClientNodeClicking(sender, args) {
+    var node = args.get_node();
+    var nodeUrl = node.get_navigateUrl();
+    if (nodeUrl != null) {
+        location.replace(nodeUrl);
+    }
+}
+
+/* End Accounts */
+
+/* Select Sessions */
+
+function RowSelected(gridId, checkBox, waitListOff, availableSeats, rowIndex) {
+    var grid = $find(gridId);
+    var masterTable = grid.get_masterTableView();
+    var row = masterTable.get_dataItems()[rowIndex];
+    try {
+        var cell = masterTable.getCellByColumnUniqueName(row, "Message");
+
+        if (!checkBox.checked)
+            cell.innerHTML = "";
+        else {
+            if (!waitListOff && availableSeats <= 0)
+                cell.innerHTML = "Waitlist";
+        }
+    }
+    catch (err) { }
+}
+
+function selectSession(check, textbox) {
+    if (check.disabled)
+        return;
+
+    textbox = (typeof textbox == 'string') ? document.getElementById(textbox) : textbox;
+
+    SetRowState(check, textbox);
+
+    if (check.checked) {
+        if (textbox.value == "" || textbox.value == "0")
+            textbox.value = "1";
+    } else {
+        textbox.value = "0";
+    }
+}
+
+function SetRowState(check, textbox) {
+    textbox.disabled = !check.checked;
+
+    //this is for overriding a default class added by the framework
+    if (textbox.disabled) {
+        textbox.className += " aspNetDisabled";
+    } else {
+        textbox.classList.remove("aspNetDisabled");
+    }
+}
+
+/* End Select Sessions */
+
+/* Status Bar */
+
+function ProcessWarningAnswer(arg) {
+    if (arg) {
+        ShowLoadingMessage();
+        __doPostBack("FilterAndContinueToShippingCart", "");
+    }
+}
+
+/* End Status Bar */
+
+/* Navigation */
+
+function OpenNavigationPanelConfigWindow(managerId, pagesPath, name, selectedEventTypes, someoneElseRegistration) {
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/NavigationConfig.aspx?Name=" + name + "&EventTypes=" + selectedEventTypes + "&WindowTitle=Config. Navigation&DisplayTitle=Edit Navigation&SomeoneElseRegistration=" + someoneElseRegistration, GetRadWindowName());
+}
+
+/* End Navigation */
+
+/* Membership Navigation */
+
+function OpenMembershipNavigationPanelConfigWindow(managerId, pagesPath, name, displayType, customerType, selectedBenefits) {
+    var manager = $find(managerId);
+
+    var wnd = manager.Open(pagesPath + "/MembershipApplicationNavigationConfig.aspx" + "?Name=" + name + "&displayType=" + displayType + "&customerType=" + customerType + "&Benefits=" + selectedBenefits + "&WindowTitle=Config. Membership Application Navigation&DisplayTitle=Edit Navigation", GetRadWindowName());
+}
+
+function OpenMembershipNavigationMappingsPanelConfigWindow(managerId, pagesPath, templates, mappings) {
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/MembershipApplicationNavigationMappingConfig.aspx" + "?Templates=" + templates + "&mappings=" + mappings + "&WindowTitle=Config. Membership Application Navigation&DisplayTitle=Map Benefits to Navigation Templates", GetRadWindowName());
+}
+/* End Membership Navigation */
+
+/* SignIn Popup */
+function OpenSignInPopupWindow(managerId, pagesPath, controlId, createNewUserAccountUrl, popupMode, returnUrl) {
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/SignInPopup.aspx?ControlId=" + controlId + "&CreateNewUserAccountUrl=" + createNewUserAccountUrl + "&PopupMode=" + popupMode + "&ReturnUrl=" + returnUrl);
+}
+
+function SignInPopupWindowClosing(wnd, args) {
+    if (args.get_argument() != null) {
+        if (args.get_argument().action == 'authenticated') {
+            var controlId = decodeURIComponent(args.get_argument().controlid.replace(/\+/g, ' '));
+
+            ShowLoadingMessage();
+
+            if (args.get_argument().popupMode == 'legacy') {
+                window.location.href = window.location.href;
+            } else {
+                __doPostBack(controlId, '');
+            }
+        } else if (args.get_argument().action == 'redirect') {
+            if (args.get_argument().redirectUrl != null) {
+                ShowLoadingMessage();
+                window.location.href = args.get_argument().redirectUrl;
+            }
+        }
+    }
+}
+
+function RedirectBackFromSignInPopup(arg) {
+    var returnonerror = GetQueryString('returnonerror', null).toLowerCase();
+
+    if (returnonerror == "true" || returnonerror == "yes")
+        history.back(1);
+}
+/* End SignIn Popup */
+
+/* SelectRegistrants */
+
+var selectedOnClient = new Array();
+var unSelectedOnClient = new Array();
+
+function getIndexOfSelectedArray(contactid, collection) {
+    for (i = 0; i < collection.length; i++) {
+        if (collection[i].split(',')[0] == contactid)
+            return i;
+    }
+    return -1;
+}
+
+function updateClientSelections(contactId, selectionState) {
+    var indexInSelected = getIndexOfSelectedArray(contactId, selectedOnClient);
+    var indexInUnselected = getIndexOfSelectedArray(contactId, unSelectedOnClient);
+    //selectionState = 0 - No Selected
+    //selectionState = 1 - Selected
+    //selectionState = 2 - waitlisted
+
+    if (selectionState >= 1) {
+        if (indexInUnselected > -1) {
+            unSelectedOnClient.splice(indexInUnselected, 1);
+        } else {
+            if (indexInSelected > -1)
+                selectedOnClient.splice(indexInSelected, 1);
+
+            var aux = contactId;
+            aux = aux + ",";
+            if (selectionState == 2)
+                aux = aux + "true"
+            else
+                aux = aux + "false";
+            selectedOnClient.push(aux);
+        }
+    } else {
+        if (indexInSelected > -1) {
+            selectedOnClient.splice(indexInSelected, 1);
+        } else {
+            unSelectedOnClient.push(contactId);
+        }
+    }
+}
+
+function ClientDropDownListIndexChange(ddl, contactId) {
+    if (ddl.disabled) return;
+
+    var selectionState = ddl.value;
+
+    updateClientSelections(contactId, selectionState);
+}
+
+function ClientCheckboxClick(check, contactId) {
+    if (check.disabled) return;
+
+    var selected = check.checked ? 1 : 0;
+
+    updateClientSelections(contactId, selected);
+}
+
+function SearchByNameClosing(wnd, args) {
+    if (args.get_argument() != null && args.get_argument().action == "select") {
+        ShowLoadingMessage();
+        __doPostBack('Refresh', args.get_argument().selections);
+    }
+}
+
+/* End SelectRegistrants */
+
+function RadGrid_CheckRowSelectability(sender, eventArgs) {
+    var dataItem = $get(eventArgs.get_id());
+    var grid = sender;
+    var MasterTable = grid.get_masterTableView();
+    var row = MasterTable.get_dataItems()[eventArgs.get_itemIndexHierarchical()];
+    var cell = MasterTable.getCellByColumnUniqueName(row, "Unselectable");
+    if (cell.innerHTML == 'true') //Check for the condition, here cell.innerHTML holds the value of the cell 
+    {
+        MasterTable.clearSelectedItems();   // Deselect any previous selection
+    }
+}
+
+addToPostBack = function (func) {
+    var old__doPostBack = __doPostBack;
+    if (typeof __doPostBack != 'function') {
+        __doPostBack = func;
+    } else {
+        __doPostBack = function (t, a) {
+            if (func(t, a)) old__doPostBack(t, a);
+        }
+    }
+};
+
+if (window.addEventListener) // W3C standard
+{
+    window.addEventListener('load', createWaitingImage, false);
+}
+else if (window.attachEvent) // Microsoft
+{
+    window.attachEvent('onload', createWaitingImage);
+}
+
+// This is useful to insert a call to ShowLoadingMessage before other eventhandler like onchange (useful to display a messaje before __doPostBack)
+function addLoadingMessageBeforeEventHandler(element, eventName) {
+    if (!element) return;
+
+    var oldEventHandler = element[eventName];
+
+    element[eventName] = function (t, a) {
+        ShowLoadingMessage();
+
+        if (oldEventHandler)
+            oldEventHandler(t, a);
+    }
+}
+
+function createWaitingImage() {
+    var div = document.createElement("div");
+    div.id = "loading";
+    div.style.width = "50px";
+    div.style.height = "50px";
+    div.style.zIndex = "1002";
+    div.innerHTML = "<i class=\"fa fa-spinner fa-spin fa-5x\"></i>";
+    div.style.display = "none";
+
+    document.body.appendChild(div);
+}
+
+function ShowLoadingMessage(action) {
+    try {
+        DisablePage();
+
+        var div = document.getElementById("loading");
+
+        if (div) {
+            div.style.display = "";
+            centerElementOnScreen(div);
+        }
+    }
+    catch (ex) {
+        console.error(ex.message);
+    }
+}
+
+function DisablePage() {
+    var div = document.createElement("div");
+    div.id = "disablingDiv";
+
+    var opacity = 6;
+    var minWidth = 960;
+    var width = document.body.offsetWidth < minWidth ? minWidth : document.body.offsetWidth;
+    var height = document.body.offsetHeight;
+
+    div.style.position = "absolute";
+    div.style.top = "0%";
+    div.style.left = "0%";
+    div.style.width = width + "px";
+    div.style.height = height + "px";
+    div.style.backgroundColor = "White";
+    div.style.opacity = opacity / 10;
+    div.style.filter = "alpha(opacity=" + opacity * 10 + ")";
+    div.style.zIndex = "1001";
+
+    if (document.body.firstChild) {
+        document.body.insertBefore(div, document.body.firstChild);
+    } else {
+        document.body.appendChild(div);
+    }
+}
+
+function centerElementOnScreen(element) {
+    element.style.position = "absolute";
+    element.style.top = "50%";
+    element.style.left = "50%";
+}
+
+// SelectSessionGroupGrid Date/Time validation
+
+function DateTimeConflictValidation(managerId, gridClientIds, row, comboClientId, hdnUserSelectionClientIds, validateAgainstViewState, hdnUserSelectionInOtherPagesId, dateConflictMessage) {
+    var firstDateColumnIndex = 1;
+    var grids = gridClientIds.split(',');
+    var masterTables = [];
+
+    // Get all Master Tables
+    for (i = 0; i < grids.length; i++) {
+        if (grids[i]) // Not null or empty
+            masterTables[i] = $find(grids[i]).get_masterTableView().get_element();
+    }
+
+    row++; // 0 in codebehind means first row but here means title row;
+    var comboClient = document.getElementById(comboClientId);
+
+    // Only if the user made a selection
+    if (comboClient.selectedIndex > 0) {
+        var selectedName = comboClient.options[comboClient.selectedIndex].getAttribute("SessionName");
+        var selectedStartDate = comboClient.options[comboClient.selectedIndex].getAttribute("StartDate");
+        var selectedEndDate = comboClient.options[comboClient.selectedIndex].getAttribute("EndDate");
+        var selectedParticipantId = comboClient.options[comboClient.selectedIndex].getAttribute("ParticipantId");
+        var selectedDisableConflictValidation = comboClient.options[comboClient.selectedIndex].getAttribute("DisableConflictValidation");
+
+        // Validate the new selection against CRM actual selection (previous pages)
+        var oldSelections = document.getElementById(hdnUserSelectionInOtherPagesId).value.split(";");
+        for (i = 0; i < oldSelections.length; i++) {
+            var oldParticipantId = oldSelections[i].split("|")[0];
+
+            if (oldParticipantId == selectedParticipantId) {
+                var sessionName = oldSelections[i].split("|")[1];
+                var startDate = oldSelections[i].split("|")[2];
+                var endDate = oldSelections[i].split("|")[3];
+                var disableConflictValidation = oldSelections[i].split("|")[4];
+
+                if (selectedDisableConflictValidation == "False" && disableConflictValidation == "False") {
+                    // If it is different day or a different instance of component then validate
+                    if (sessionName != selectedName && TimePeriodOverlaps(startDate, endDate, selectedStartDate, selectedEndDate)) {
+                        ShowAlertDialog(managerId, 'callBackFunction', replaceDateConflictMessage(dateConflictMessage, sessionName, startDate, endDate), "Date Conflict");
+                        comboClient.selectedIndex = 0;
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Validate the new selection against ViewState (but the current day selection, which is validated against the grid)
+        if (validateAgainstViewState) {
+            var hiddens = hdnUserSelectionClientIds.split(',');
+            for (j = 0; j < hiddens.length; j++) {
+                if (hiddens[j]) { // Not null or empty
+                    var selections = document.getElementById(hiddens[j].split(';')[0]).value.split(";");
+                    var dayNotValidateWithViewState = hiddens[j].split(';')[1];
+                    for (i = 0; i < selections.length; i++) {
+                        var participantId = selections[i].split("|")[0];
+
+                        if (participantId == selectedParticipantId) {
+                            var sessionName = selections[i].split("|")[1];
+                            var startDate = selections[i].split("|")[2];
+                            var endDate = selections[i].split("|")[3];
+                            var disableConflictValidation = selections[i].split("|")[4];
+
+                            if (selectedDisableConflictValidation == "False" && disableConflictValidation == "False") {
+                                // If it is different day or a different instance of component then validate
+                                if (startDate.substring(0, 8) != dayNotValidateWithViewState && TimePeriodOverlaps(startDate, endDate, selectedStartDate, selectedEndDate)) {
+                                    ShowAlertDialog(managerId, 'callBackFunction', replaceDateConflictMessage(dateConflictMessage, sessionName, startDate, endDate), "Date Conflict");
+                                    comboClient.selectedIndex = 0;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Validate the new selection against other selections in these grids
+        for (i = 0; i < masterTables.length; i++) {
+            for (var column = firstDateColumnIndex; column < masterTables[i].rows[row].cells.length; column++) {
+                var cell = masterTables[i].rows[row].cells[column];
+                var dropDown = cell.firstChild;
+
+                if (dropDown != null && dropDown.id != comboClientId) {
+                    var sessionName = dropDown.options[dropDown.selectedIndex].getAttribute("SessionName");
+                    var startDate = dropDown.options[dropDown.selectedIndex].getAttribute("StartDate");
+                    var endDate = dropDown.options[dropDown.selectedIndex].getAttribute("EndDate");
+                    var disableConflictValidation = dropDown.options[dropDown.selectedIndex].getAttribute("DisableConflictValidation");
+
+                    if (selectedDisableConflictValidation == "False" && disableConflictValidation == "False") {
+                        if (TimePeriodOverlaps(startDate, endDate, selectedStartDate, selectedEndDate)) {
+                            ShowAlertDialog(managerId, 'callBackFunction', replaceDateConflictMessage(dateConflictMessage, sessionName, startDate, endDate), "Date Conflict");
+                            comboClient.selectedIndex = 0;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function TimePeriodOverlaps(firstDateStart, firstDateEnd, secondDateStart, secondDateEnd) {
+    return !((secondDateStart <= firstDateStart && secondDateStart <= firstDateEnd && secondDateEnd <= firstDateStart && secondDateEnd <= firstDateEnd) || (secondDateStart >= firstDateStart && secondDateStart >= firstDateEnd && secondDateEnd >= firstDateStart && secondDateEnd >= firstDateEnd));
+}
+
+function replaceDateConflictMessage(message, sessionName, startDate, endDate) {
+    var newStartDate = new Date(startDate.substring(0, 4) + "/" + startDate.substring(4, 6) + "/" + startDate.substring(6, 8) + " " + startDate.substring(8, 10) + ":" + startDate.substring(10, 12));
+    var newEndDate = new Date(endDate.substring(0, 4) + "/" + endDate.substring(4, 6) + "/" + endDate.substring(6, 8) + " " + endDate.substring(8, 10) + ":" + endDate.substring(10, 12));
+
+    return message.replace("[pa_eventsessioncodeidname]", sessionName).replace("[pa_sessionstartdate]", dateFormat(newStartDate, "mm/dd/yyyy hh:MM TT")).replace("[pa_sessionenddate]", dateFormat(newEndDate, "mm/dd/yyyy hh:MM TT"));
+}
+
+function UpdateConflictValidationInput(comboClientId, hdnUserSelectionInOtherPagesId) {
+
+    var comboClient = document.getElementById(comboClientId);
+    var selectedParticipantId;
+    var selectedName;
+
+    for (var i = 0; i < comboClient.options.length; i++) {
+        if (i != comboClient.selectedIndex) {
+            selectedParticipantId = comboClient.options[i].getAttribute("ParticipantId");
+            selectedName = comboClient.options[i].getAttribute("SessionName");
+
+            if (selectedParticipantId != null && selectedName != null) {
+                RemoveFromConflictValidationInputIfPresent(selectedParticipantId, selectedName, hdnUserSelectionInOtherPagesId);
+            }
+        }
+    }
+
+    // We set this value here for letting know other instances of this same component the changes done by this particular instance
+    $("input[name*='hdnUserSelectionInOtherPages']").val(document.getElementById(hdnUserSelectionInOtherPagesId).value);
+}
+
+function RemoveFromConflictValidationInputIfPresent(selectedParticipantId, sessionName, hdnUserSelectionInOtherPagesId) {
+    var oldSelections = document.getElementById(hdnUserSelectionInOtherPagesId).value.split(";");
+    var updatedSelections = [];
+
+    for (i = 0; i < oldSelections.length; i++) {
+        var oldParticipantId = oldSelections[i].split("|")[0];
+        var oldSessionName = oldSelections[i].split("|")[1];
+
+        if (!(oldParticipantId == selectedParticipantId && oldSessionName == sessionName)) {
+            //if it hasn't been removed, keep the selection in the hidden field
+            updatedSelections.push(oldSelections[i]);
+        }
+    }
+
+    document.getElementById(hdnUserSelectionInOtherPagesId).value = updatedSelections.join(";");
+}
+
+// SelectSessionsWaitList
+function OpenMeetingRegistrationSelectSessionsWaitList(managerId, pagesPath, message, containerPageTypeName, parentModuleName, parentControlTypeName, settingsControlId) {
+    // Open the popup
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/MeetingRegistrationSelectSessionsWaitList.aspx?Message=" + escape(message) + "&ContainerPageTypeName=" + containerPageTypeName + "&ParentModuleName=" + parentModuleName + "&ParentControlTypeName=" + parentControlTypeName + "&SettingsControlId=" + settingsControlId);
+}
+
+function SelectSessionsWaitListClose(wnd, args) {
+    if (args.get_argument() != null && args.get_argument().action == "save") {
+        ShowLoadingMessage();
+        __doPostBack('UpdateSessionsWaitList', '');
+    }
+}
+
+// RadTabStrip
+function selectTabByText(tabStripClientId, tabText) {
+    var tabStrip = $find(tabStripClientId);
+    var tab = tabStrip.findTabByText(tabText);
+    if (tab && !tab.get_selected()) {
+        tab.set_selected(true);
+    }
+}
+
+// Billing and Shipping section within MX Shopping Cart
+function SetStateProvinceFieldVisibility(countriesDropDown, ddlStateProvinceId, txtStateProvinceId) {
+    var Country = countriesDropDown.options[countriesDropDown.selectedIndex].text.toLowerCase();
+
+    if (Country == "united states" || Country == "us" || Country == "u.s." || Country == "usa" || Country == "u.s.a." || Country == "canada" || Country == "ca") {
+        document.getElementById(ddlStateProvinceId).style.display = 'block';
+        document.getElementById(txtStateProvinceId).style.display = 'none';
+    }
+    else {
+        document.getElementById(ddlStateProvinceId).style.display = 'none';
+        document.getElementById(txtStateProvinceId).style.display = 'block';
+    }
+}
+
+function SetStateProvinceAndPostalCodeFieldsIfRequired(countriesDropDown, divStateProvinceId, divPostalCodeId) {
+    var Country = countriesDropDown.options[countriesDropDown.selectedIndex].text.toLowerCase();
+
+    if (Country == "united states" || Country == "us" || Country == "u.s." || Country == "usa" || Country == "u.s.a." || Country == "canada" || Country == "ca") {
+        document.getElementById(divStateProvinceId).classList.add("required");
+        document.getElementById(divPostalCodeId).classList.add("required");
+    }
+    else {
+        document.getElementById(divStateProvinceId).classList.remove("required");
+        document.getElementById(divPostalCodeId).classList.remove("required");
+    }
+}
+
+function OpenMembershipApplicationDuplicateRatesWindow(managerId, pagesPath, callerPageName, callerControlId, callerModule, callerComponent, callerResourceFilePrefix) {
+    // Open the popup    
+    var manager = $find(managerId);
+    var wnd = manager.Open(pagesPath + "/MembershipApplicationDuplicateRates.aspx?pagesPath=" + pagesPath + " &callerPageName=" + callerPageName + "&callerControlId=" + callerControlId + "&callerModule=" + callerModule + "&callerComponent=" + callerComponent + "&callerResourceFilePrefix=" + callerResourceFilePrefix);
+}
+
+function Toggle(showHideDiv, switchTextDiv, textShow, textHide) {
+    var ele = document.getElementById(showHideDiv);
+    var text = document.getElementById(switchTextDiv);
+
+    if (ele.style.display == "block") {
+        ele.style.display = "none";
+        text.innerHTML = textShow;
+    }
+    else {
+        ele.style.display = "block";
+        text.innerHTML = textHide;
+    }
+}
+
+// This is just for responsive design in STD grids
+function AddHorizontalScrollToRadGrid(sender, args) {
+    $('.rgDataDiv').removeAttr('style');
+    $('.rgDataDiv').attr('style', 'overflow-x: scroll;');
+}
+
+function formatCurrency(n, currency) {
+    return currency + n.toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,");
+}
+
+function OnRadWindowClientShow(sender, args) {
+    var loadingObject = $get("loading");
+    if (typeof loadingObject === 'object' && loadingObject !== null && 'cloneNode' in loadingObject) {
+        var loadingSign = loadingObject.cloneNode(true);
+        var contentCell = sender._contentCell;
+
+        if (contentCell && loadingSign) {
+            contentCell.classList.remove("rwLoading");
+            contentCell.style.verticalAlign = "middle";
+            contentCell.appendChild(loadingSign);
+            loadingSign.style.width = "100%";
+            loadingSign.style.textAlign = "center";
+            loadingSign.style.display = "";
+        }
+    }
+}
+
+function OnRadWindowClientPageLoad(sender, args) {
+    var loadingSign = $get("loading");
+    var contentCell = sender._contentCell;
+
+    if (contentCell && (contentCell.lastChild.id == "loading")) {
+        contentCell.removeChild(contentCell.lastChild);
+        contentCell.style.verticalAlign = "";
+    }
+}
+
+function scrollToPosition(el) {
+    var xPos = 0;
+    var yPos = 0;
+
+    while (el) {
+        if (el.tagName == "BODY") {
+            // deal with browser quirks with body/window/document and page scroll
+            var xScroll = el.scrollLeft || document.documentElement.scrollLeft;
+            var yScroll = el.scrollTop || document.documentElement.scrollTop;
+
+            xPos += (el.offsetLeft - xScroll + el.clientLeft);
+            yPos += (el.offsetTop - yScroll + el.clientTop);
+        } else {
+            // for all other non-BODY elements
+            xPos += (el.offsetLeft - el.scrollLeft + el.clientLeft);
+            yPos += (el.offsetTop - el.scrollTop + el.clientTop);
+        }
+
+        el = el.offsetParent;
+    }
+
+    window.scrollTo(0, yPos);
+}
+
+function isNumber(event) {
+    keys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    return keys.indexOf(event.key) > -1;
+}
+
+function ddlQuantity_Change(ddlQuantity, txtQuantity, doPostBack) {
+    if (ddlQuantity.value == "") {
+        txtQuantity.classList.add("d-block");
+        txtQuantity.focus();
+        ddlQuantity.classList.remove("d-inline-block");
+        ddlQuantity.classList.add("d-none");
+    }
+    else {
+        txtQuantity.value = ddlQuantity.value;
+        if (doPostBack) __doPostBack(ddlQuantity.id);
+    }
+}
+
+function txtQuantity_KeyUp(txtQuantity, hidQuantity, btnUpdate) {
+    if (txtQuantity.value != hidQuantity.value && txtQuantity.value != "")
+        btnUpdate.classList.add("d-block");
+    else
+        btnUpdate.classList.remove("d-block");
+}
+
+function txtQuantity_Blur(txtQuantity, hidQuantity) {
+    if (txtQuantity.value == "")
+        txtQuantity.value = hidQuantity.value;
+}
+
+function SaveMoreModal(modalId) {
+    $('#' + modalId).modal('hide');
+    return true;
+}
+
+function expandAll(sectionId) {
+    // Main fieldset and second level
+    if ($("#" + sectionId).hasClass("collapse")) {
+        $("#" + sectionId).addClass('show');
+        $("#" + sectionId + " .collapse").addClass('show');
+    }
+    else {
+        // Only Second level
+        $("#" + sectionId + " .collapse").addClass('show');
+    }
+}
+
+function collapseAll(sectionId) {
+    // Main fieldset and second level
+    if ($("#" + sectionId).hasClass("collapse")) {
+        $("#" + sectionId).removeClass('show');
+        $("#" + sectionId + " .collapse").removeClass('show');
+    }
+    else {
+        // Only Second level
+        $("#" + sectionId + " .collapse").removeClass('show');
+    }
+}
